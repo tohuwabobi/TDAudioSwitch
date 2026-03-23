@@ -1,0 +1,16 @@
+# Windows
+Thumbs.db
+Desktop.ini
+
+# PowerShell / logs
+*.log
+*.tmp
+
+# Editor / IDE
+.vs/
+.vscode/
+
+# Build / packaging
+dist/
+build/
+out/
