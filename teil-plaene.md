@@ -139,6 +139,16 @@ Das MVP auf einem echten Windows-System absichern.
 
 Die wichtigsten Nutzungsszenarien sind einmal praktisch geprueft.
 
+### Test-Checkliste fuer den aktuellen Stand
+
+- `TDAudioSwitch.bat` per Doppelklick starten und pruefen, ob das Menue sichtbar bleibt
+- Wiedergabegeraet per Ziffer waehlen und kontrollieren, ob danach die Mikrofon-Auswahl erscheint
+- Mikrofon per Ziffer waehlen und kontrollieren, ob beide Standardgeraete uebernommen wurden
+- In Schritt 1 oder 2 die Leertaste druecken und pruefen, ob ohne Aenderung beendet wird
+- Eine ungueltige Taste wie `x` oder `0` druecken und pruefen, ob die Eingabe erneut abgefragt wird
+- Mit mehreren angeschlossenen Geraeten pruefen, ob die angezeigten Namen zu den echten Windows-Geraeten passen
+- Optional PowerShell als Administrator starten und erneut testen, falls beim Setzen ein Zugriffsproblem auftritt
+
 ## Teil-Plan 9: Dokumentation
 
 ### Ziel
