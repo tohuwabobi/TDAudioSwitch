@@ -1,9 +1,11 @@
 @echo off
 setlocal
 
-call :pullRepo "C:\Users\tobias.lange\Projekte\TDLINK"
-call :pullRepo "C:\Users\tobias.lange\Projekte\TDNOLDS"
-call :pullRepo "C:\Users\tobias.lange\Projekte\TDAudioSwitch"
+set "BASE_DIR=%USERPROFILE%\Projekte"
+
+call :pullRepo "%BASE_DIR%\TDLINK"
+call :pullRepo "%BASE_DIR%\TDNOLDS"
+call :pullRepo "%BASE_DIR%\TDAudioSwitch"
 
 echo.
 echo Fertig.
