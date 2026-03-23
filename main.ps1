@@ -1,4 +1,10 @@
 
+param(
+    [string] $OutputName,
+    [string] $MicrophoneName,
+    [switch] $GetCurrentDefaults
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -91,6 +97,7 @@ namespace TDAudioSwitch
     internal interface IMMDeviceEnumerator
     {
         int EnumAudioEndpoints(EDataFlow dataFlow, DeviceState stateMask, out IMMDeviceCollection devices);
+        int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice device);
     }
 
     [ComImport]
@@ -212,6 +219,40 @@ namespace TDAudioSwitch
             Marshal.ThrowExceptionForHR(policyConfig.SetDefaultEndpoint(deviceId, ERole.eCommunications));
         }
 
+        public static AudioDeviceInfo GetDefaultDevice(DeviceFlow flow)
+        {
+            IMMDeviceEnumerator enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            IMMDevice device;
+
+            Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(ToDataFlow(flow), ERole.eConsole, out device));
+
+            string id;
+            Marshal.ThrowExceptionForHR(device.GetId(out id));
+
+            IPropertyStore properties;
+            Marshal.ThrowExceptionForHR(device.OpenPropertyStore(0, out properties));
+
+            PROPERTYKEY friendlyNameKey = FriendlyNameKey;
+            PROPVARIANT value;
+            Marshal.ThrowExceptionForHR(properties.GetValue(ref friendlyNameKey, out value));
+
+            try
+            {
+                string friendlyName = Marshal.PtrToStringUni(value.pointerValue) ?? id;
+
+                return new AudioDeviceInfo
+                {
+                    Id = id,
+                    Name = friendlyName,
+                    Flow = flow.ToString()
+                };
+            }
+            finally
+            {
+                NativeMethods.PropVariantClear(ref value);
+            }
+        }
+
         private static EDataFlow ToDataFlow(DeviceFlow flow)
         {
             return flow == DeviceFlow.Render ? EDataFlow.eRender : EDataFlow.eCapture;
@@ -305,6 +346,36 @@ function Get-AudioDevices {
 
     Initialize-AudioInterop
     [TDAudioSwitch.AudioDeviceEnumerator]::GetDevices([TDAudioSwitch.DeviceFlow]::$Flow)
+}
+
+function Find-AudioDeviceByName {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]] $Devices,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Name,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Label
+    )
+
+    $exactMatches = @($Devices | Where-Object { $_.Name -eq $Name })
+    if ($exactMatches.Count -eq 1) {
+        return $exactMatches[0]
+    }
+
+    $partialMatches = @($Devices | Where-Object { $_.Name -like "*$Name*" })
+    if ($partialMatches.Count -eq 1) {
+        return $partialMatches[0]
+    }
+
+    if ($exactMatches.Count -gt 1 -or $partialMatches.Count -gt 1) {
+        throw "Mehrere $Label passen zu '$Name'. Bitte den Namen genauer angeben."
+    }
+
+    throw "$Label '$Name' wurde nicht gefunden."
 }
 
 function Write-DeviceSection {
@@ -415,6 +486,18 @@ function Set-DefaultAudioDevice {
     [TDAudioSwitch.AudioDeviceEnumerator]::SetDefaultDevice($Device.Id)
 }
 
+function Get-CurrentAudioDevice {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Render', 'Capture')]
+        [string] $Flow
+    )
+
+    Initialize-AudioInterop
+    return [TDAudioSwitch.AudioDeviceEnumerator]::GetDefaultDevice([TDAudioSwitch.DeviceFlow]::$Flow)
+}
+
 function Start-TDAudioSwitch {
     [CmdletBinding()]
     param()
@@ -440,6 +523,37 @@ function Start-TDAudioSwitch {
 
     if ($captureDevices.Count -eq 0) {
         Write-WarningMessage 'Es wurden keine aktiven Mikrofone gefunden.'
+        return
+    }
+
+    if ($GetCurrentDefaults) {
+        $currentOutput = Get-CurrentAudioDevice -Flow Render
+        $currentMicrophone = Get-CurrentAudioDevice -Flow Capture
+
+        Write-Output ("OUTPUT={0}" -f $currentOutput.Name)
+        Write-Output ("MICROPHONE={0}" -f $currentMicrophone.Name)
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($OutputName) -or -not [string]::IsNullOrWhiteSpace($MicrophoneName)) {
+        if ([string]::IsNullOrWhiteSpace($OutputName) -or [string]::IsNullOrWhiteSpace($MicrophoneName)) {
+            throw 'Fuer den Preset-Modus muessen OutputName und MicrophoneName gemeinsam gesetzt sein.'
+        }
+
+        $selectedRenderDevice = Find-AudioDeviceByName -Devices $renderDevices -Name $OutputName -Label 'Wiedergabegeraet'
+        $selectedCaptureDevice = Find-AudioDeviceByName -Devices $captureDevices -Name $MicrophoneName -Label 'Mikrofon'
+
+        Write-Status ("Preset-Ausgabe gefunden: {0}" -f $selectedRenderDevice.Name)
+        Write-Status ("Preset-Mikrofon gefunden: {0}" -f $selectedCaptureDevice.Name)
+
+        Set-DefaultAudioDevice -Device $selectedRenderDevice
+        Set-DefaultAudioDevice -Device $selectedCaptureDevice
+
+        Write-Host ''
+        Write-Host '[Erfolg]' -ForegroundColor Green
+        Write-Host ("  Standard-Ausgabe gesetzt: {0}" -f $selectedRenderDevice.Name)
+        Write-Host ("  Standard-Mikrofon gesetzt: {0}" -f $selectedCaptureDevice.Name)
+        Write-Host ''
         return
     }
 
