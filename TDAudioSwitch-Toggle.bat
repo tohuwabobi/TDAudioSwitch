@@ -5,10 +5,10 @@ title TDAudioSwitch Toggle
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_PATH=%SCRIPT_DIR%main.ps1"
 
-set "A_OUTPUT=Lautsprecher (Jabra Link 380)"
-set "A_MICROPHONE=Mikrofon (Jabra Link 380)"
-set "B_OUTPUT=LG ULTRAWIDE (NVIDIA High Definition Audio)"
-set "B_MICROPHONE=Mikrofon (4- Insta360 Link 2)"
+set "A_OUTPUT=Lautsprecher (Jabra EVOLVE 30 II)"
+set "A_MICROPHONE=Mikrofon (Jabra EVOLVE 30 II)"
+set "B_OUTPUT=LG ULTRAWIDE (HD Audio Driver for Display Audio)"
+set "B_MICROPHONE=Mikrofon (FHD Camera Microphone)"
 
 for /f "usebackq tokens=1,* delims==" %%A in (`powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_PATH%" -GetCurrentDefaults`) do (
     if /i "%%A"=="OUTPUT" set "CURRENT_OUTPUT=%%B"
